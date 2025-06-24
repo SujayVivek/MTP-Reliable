@@ -1,116 +1,98 @@
-MTP: Reliable Message-Oriented Transport Protocol over UDP
-Overview
-This project implements MTP (My Transport Protocol), a custom, message-oriented, reliable data transfer protocol built on top of UDP sockets. MTP provides in-order, lossless delivery of fixed-size messages using window-based flow control, custom acknowledgment, retransmission, and a shared memory management architecture. The solution is designed to function as a drop-in replacement for UDP in user applications, exposing familiar socket-like APIs.
+# 🛰️ MTP: Reliable Message-Oriented Transport Protocol over UDP
 
-Features
-Reliable, in-order delivery of 1KB messages over unreliable UDP
+## 🚀 Overview
 
-Sliding window protocol with sender (swnd) and receiver (rwnd) window management
+**MTP (My Transport Protocol)** is a custom, message-oriented, reliable data transfer protocol built on top of UDP. This project implements a drop-in replacement for UDP sockets, guaranteeing in-order, lossless delivery of fixed-size messages using a window-based flow control mechanism. Designed for performance and reliability, MTP exposes a familiar socket-like API for easy integration into user applications.
 
-Custom ACK handling with piggybacked window size and last in-order sequence number
+---
 
-Automatic retransmission on timeout (configurable, default T=5s)
+## ✨ Features
 
-Duplicate detection and handling for both data and ACK messages
+- **Reliable, In-Order Delivery:** Ensures 1KB messages always arrive in sequence, even over unreliable UDP.
+- **Sliding Window Protocol:** Sender and receiver maintain dynamic windows for efficient flow control.
+- **Custom ACK Handling:** Piggybacks window size and last in-order sequence number for smart feedback.
+- **Automatic Retransmission:** Messages are resent on timeout (default 5s), minimizing loss.
+- **Duplicate Detection:** Identifies and drops duplicate data and ACKs.
+- **Dynamic Window Resizing:** Adapts to buffer state for optimal throughput.
+- **Multi-Socket Support:** Up to 25 concurrent MTP sockets.
+- **Shared Memory Architecture:** Centralized state and buffer management.
+- **Multithreaded Design:** Separate threads for sending, receiving, and garbage collection.
+- **Simulated Packet Loss:** `dropMessage(p)` for robust testing.
+- **Static Library:** Easy linking via `libmsocket.a`.
 
-Dynamic window resizing based on receiver buffer state
+---
 
-Support for up to 25 concurrent MTP sockets
+## 🗂️ File Structure
 
-Shared memory architecture for socket state, buffers, and window management
+| File                | Purpose                                         |
+|---------------------|-------------------------------------------------|
+| `msocket.h/.c`      | MTP socket API and protocol implementation      |
+| `initmsocket.c`     | Initializes threads, shared memory, GC process  |
+| `user1.c`           | Sender demo application                         |
+| `user2.c`           | Receiver demo application                       |
+| `Makefile`          | Build library and executables                   |
+| `documentation.txt` | Data structures, function docs, test results    |
 
-Multi-threaded design: separate threads for sending, receiving, and garbage collection
+---
 
-Simulated packet loss via dropMessage(p) for robust testing
+## ⚡ Getting Started
 
-Static library interface (libmsocket.a) for easy integration
+### 1. Build Everything
 
-File Structure
-msocket.h, msocket.c — MTP socket API and protocol implementation
 
-initmsocket.c — Initialization of threads, shared memory, and garbage collector
+### 2. Run the Protocol
 
-user1.c, user2.c — Sample applications for file transfer using MTP
+- **Start the initializer:**
+- **In separate terminals, run:**
 
-Makefile — Build static library and executables
 
-documentation.txt — Data structures, function descriptions, and test results
+### 3. Simulate Packet Loss
 
-Usage
-1. Build the Library and Executables
-bash
-make           # Builds libmsocket.a
-make init      # Builds the initmsocket executable
-make user1     # Builds user1 (sender) executable
-make user2     # Builds user2 (receiver) executable
-2. Run the Protocol
-Start the initializer:
+- Set the packet loss probability `p` in `msocket.h` (e.g., `#define P 0.1`)
+- Test with different `p` values (0.05 to 0.5) and record transmission stats
 
-bash
-./initmsocket
-In separate terminals, run:
+---
 
-bash
-./user1 <local_ip> <local_port> <remote_ip> <remote_port> <input_file>
-./user2 <local_ip> <local_port> <remote_ip> <remote_port> <output_file>
-3. Testing with Simulated Loss
-Adjust the packet loss probability p in msocket.h (e.g., #define P 0.1)
+## 🛠️ API
 
-Test with different values of p (0.05 to 0.5) and record transmission statistics as required
 
-API
-The following functions are provided (mirroring UDP socket APIs):
+---
 
-int m_socket(int domain, int type, int protocol);
+## 🔎 How It Works
 
-int m_bind(int sockfd, struct sockaddr *addr, socklen_t addrlen, struct sockaddr *dest_addr, socklen_t dest_len);
+- **Sender:** Buffers up to 10 messages, manages a sliding window (default 5), retransmits on timeout.
+- **Receiver:** Buffers up to 5 messages, delivers only in-order data, sends ACKs with window updates.
+- **Shared Memory:** Tracks all socket state, buffers, window info for up to 25 sockets.
+- **Thread R:** Handles incoming UDP, buffer management, and ACKs.
+- **Thread S:** Manages timeouts, retransmissions, and sending.
+- **Garbage Collector:** Cleans up orphaned sockets and memory.
+- **Packet Loss:** Simulated via `dropMessage(p)` for robust protocol testing.
 
-ssize_t m_sendto(int sockfd, const void *buf, size_t len, int flags, struct sockaddr *dest_addr, socklen_t addrlen);
+---
 
-ssize_t m_recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
+## 📄 Documentation
 
-int m_close(int sockfd);
+See `documentation.txt` for:
+- Data structures and field descriptions
+- Function documentation for `msocket.c` and `initmsocket.c`
+- Test results table: avg. transmissions per message for various `p` values
 
-Additional:
+---
 
-int dropMessage(float p); — Simulates packet loss for testing
+## ⚠️ Notes
 
-How It Works
-Sender buffers up to 10 messages, maintains a sliding window (default size 5), and retransmits on timeout.
+- **Message size:** Fixed at 1KB
+- **Sequence numbers:** 4 bits (wrap at 16)
+- **Buffers:** Configurable in `msocket.h`
+- **Non-blocking:** Send/receive semantics
+- **Designed for:** Simplicity, extensibility, and robust testing
 
-Receiver buffers up to 5 messages, delivers only in-order messages to the application, and sends ACKs with window updates.
+---
 
-Shared memory tracks all socket state, buffers, and window info for up to 25 sockets.
+## 📝 License
 
-Thread R handles incoming UDP messages, buffer management, and ACKs.
+For academic and educational use only.
 
-Thread S manages timeouts, retransmissions, and sending pending messages.
+---
 
-Garbage collector cleans up orphaned sockets and shared memory.
-
-Packet loss is simulated using dropMessage(p) for robust protocol validation.
-
-Documentation
-See documentation.txt for:
-
-All data structures and their fields
-
-Function descriptions for msocket.c and initmsocket.c
-
-Test results table: average transmissions per message for various p values
-
-Notes
-Message size is fixed at 1KB.
-
-Sequence numbers are 4 bits (wrap at 16).
-
-All buffers and window sizes are configurable in msocket.h.
-
-Non-blocking send/receive semantics.
-
-Designed for simplicity and extensibility.
-
-License
-This project is for academic and educational use.
-
-Contact: For questions or issues, please open a GitHub issue or contact the repository maintainer.
+**Questions?** Open a GitHub issue or contact the maintainer.
